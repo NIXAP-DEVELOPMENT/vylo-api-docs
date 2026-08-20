@@ -6,8 +6,9 @@ REST over HTTPS, JSON in and JSON out. Call and message history for your account
 |---|---|
 | `https://history-api.voice.vylocloud.com` | History — conversations, calls, messages |
 | `https://sms.voice.vylocloud.com` | Messaging — sending SMS and MMS |
+| `https://backend-api.voice.vylocloud.com` | Accounts — users |
 
-Both accept the same token.
+All three accept the same token.
 
 ---
 
@@ -439,4 +440,67 @@ Not every number can send attachments — we will tell you which of yours can.
 | `413` | Attachment exceeds the limit for its type |
 
 A `400` is a problem with the request; do not retry it unchanged. Retry only on `5xx`, with backoff.
-# vylo-api-docs
+
+---
+
+## 5. Users
+
+Call records identify people by UUID (`answeredByUser`, `originatedByUser`) and by extension
+(`directExtension`). This endpoint resolves both into names.
+
+```http
+GET /api/users-all HTTP/1.1
+Host: backend-api.voice.vylocloud.com
+Authorization: Bearer <your token>
+Accept: application/ld+json
+```
+
+```bash
+curl "https://backend-api.voice.vylocloud.com/api/users-all" \
+  -H "Authorization: Bearer $VYLO_TOKEN" \
+  -H "Accept: application/ld+json"
+```
+
+```json
+{
+  "@context": "/api/contexts/User",
+  "@id": "/api/users-all",
+  "@type": "Collection",
+  "member": [
+    {
+      "@id": "/api/users/312",
+      "@type": "User",
+      "id": 312,
+      "uuid": "b4c1e9d2-3f77-4a10-9d21-6c5be0a4f118",
+      "email": "dana@northline.example",
+      "firstName": "Dana",
+      "lastName": "Whitfield",
+      "sipExtension": "104",
+      "roles": ["ROLE_USER"],
+      "isVerified": true
+    }
+  ]
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `uuid` | string \| null | **The join key.** Matches `answeredByUser` and `originatedByUser` on call records. |
+| `sipExtension` | string \| null | Extension. Matches `directExtension` on call records. |
+| `firstName`, `lastName` | string | Display name. |
+| `email` | string | Sign-in address. |
+| `id` | integer | Internal id. Prefer `uuid` for joins — it is the one history uses. |
+| `roles` | array | Permission roles inside Vylo. |
+| `isVerified` | boolean | Whether the account has completed verification. |
+
+### Notes
+
+The response is **not paginated** — every user comes back in one call, wrapped in `member`. Plain
+`application/json` returns a bare array instead.
+
+You only see users on your own account.
+
+Names and extensions change rarely. Fetch the roster once when your sync process starts, keep it in
+memory, and refresh it on a schedule rather than per call record.
