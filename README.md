@@ -1,6 +1,3 @@
----
-permalink: /
----
 # Vylo API
 
 REST over HTTPS, JSON in and JSON out. Call and message history for your account, and sending.
